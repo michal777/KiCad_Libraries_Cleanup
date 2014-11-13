@@ -31,6 +31,7 @@ main (void)
 	char new_3d_dir_path[MAX_NAME_LENGTH];		//new path to directory corresponding with proper .pretty
 	int i, j, k, l, m;							//counters
 	char read_char;								//char variable
+	int read_int;								//int variable
 	char buffer_in[BUFFER_SIZE];				//buffer for line read from file
 	char buffer_out[BUFFER_SIZE];				//buffer for line to write to file
 //////////////////////////////////////////////////////////////////////
@@ -196,8 +197,8 @@ main (void)
 			if((file_3d_old = fopen(old_3d_path, "rt")) != NULL)
 			{
 				if((file_3d_new = fopen(new_3d_path, "wt")) != NULL)
-					while((read_char = fgetc(file_3d_old)) != EOF)
-						fputc(read_char, file_3d_new);	
+					while((read_int = fgetc(file_3d_old)) != EOF)
+						fputc(read_int, file_3d_new);	
 				else
 					perror ("Couldn't open the new .wings file");
 				if(file_3d_new != NULL)
