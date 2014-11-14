@@ -29,9 +29,10 @@ main (void)
 	char old_3d_path[MAX_NAME_LENGTH];			//original path to 3d file (.wrl or .wings)
 	char new_3d_path[MAX_NAME_LENGTH];			//new path to renamed 3d file (.wrl or .wings)
 	char new_3d_dir_path[MAX_NAME_LENGTH];		//new path to directory corresponding with proper .pretty
-	int i, j, k, l, m;							//counters
+	int i, j, k, l, m, n;							//counters
 	char read_char;								//char variable
 	int read_int;								//int variable
+	char read_string[BUFFER_SIZE];				//string variable
 	char buffer_in[BUFFER_SIZE];				//buffer for line read from file
 	char buffer_out[BUFFER_SIZE];				//buffer for line to write to file
 //////////////////////////////////////////////////////////////////////
@@ -114,6 +115,8 @@ main (void)
 					strcpy(path_3d_old, "0");
 					do
 					{	
+					
+					
 						l = 0;		//reset counter of characters in line
 						do
 						{
@@ -127,7 +130,56 @@ main (void)
 						} while ((read_char != '\n') && (read_char != EOF));	//check if line is read
 						
 
-						if ((strncmp("  (model ", buffer_in + BUFFER_SIZE - l, strlen("  (model ")) == 0) && (read_char != EOF))	//search "  model " in line, ommit if there was EOF
+
+						if ((strncmp("(module ", buffer_in + BUFFER_SIZE - l, strlen("(module ")) == 0) && (read_char != EOF))	//search "  model " in line, ommit if there was EOF
+						{
+							for(n = 0; (buffer_in[BUFFER_SIZE - l + strlen("(module ") + n]) != ' '; ++n)		//
+							for(m = 0; (buffer_in[BUFFER_SIZE - l + strlen("(module ") + n + 1 + m]) != '\n'; ++m)		//save rest of line, following "(module "
+								read_string[m] = buffer_in[BUFFER_SIZE - l + strlen("(module ") + n + 1 + m];
+							read_string[m] = '\0';
+						
+							strcpy(buffer_out, "(module ");
+							strncat(buffer_out, footprint_list[j].d_name, strlen(footprint_list[j].d_name) - strlen(".kicad_mod"));
+							strcat(buffer_out, read_string);							
+							for(m = 0; buffer_out[m] != '\0'; ++m)
+								fputc(buffer_out[m], file_kicad_mod_new);	//write new line
+							fputc('\n', file_kicad_mod_new);
+						}
+						else if ((strncmp("  (fp_text reference ", buffer_in + BUFFER_SIZE - l, strlen("  (fp_text reference ")) == 0) && (read_char != EOF))	//search "  (fp_text reference " in line, ommit if there was EOF
+						{
+							for(n = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ") + n]) != ' '; ++n)		//
+							for(m = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ") + n + 1 + m]) != '\n'; ++m)		//save rest of line, following "  (fp_text reference "
+								read_string[m] = buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ") + n + 1 + m];
+							read_string[m] = '\0';
+						
+							strcpy(buffer_out, "  (fp_text reference ");
+							strncat(buffer_out, footprint_list[j].d_name, strlen(footprint_list[j].d_name) - strlen(".kicad_mod"));
+							strcat(buffer_out, read_string);							
+							for(m = 0; buffer_out[m] != '\0'; ++m)
+								fputc(buffer_out[m], file_kicad_mod_new);	//write new line
+							fputc('\n', file_kicad_mod_new);
+						}
+						else if ((strncmp("  (fp_text value ", buffer_in + BUFFER_SIZE - l, strlen("  (fp_text value ")) == 0) && (read_char != EOF))	//search "  (fp_text value " in line, ommit if there was EOF
+						{
+							for(n = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ") + n]) != ' '; ++n)		//
+							for(m = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ") + n + 1 + m]) != '\n'; ++m)		//save rest of line, following "  (fp_text value "
+								read_string[m] = buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ") + n + 1 + m];
+							read_string[m] = '\0';
+						
+							strcpy(buffer_out, "  (fp_text value VAL**");
+							strcat(buffer_out, read_string);							
+							for(m = 0; buffer_out[m] != '\0'; ++m)
+								fputc(buffer_out[m], file_kicad_mod_new);	//write new line
+							fputc('\n', file_kicad_mod_new);
+						}
+						else if ((strncmp("    (effects (font ", buffer_in + BUFFER_SIZE - l, strlen("    (effects (font ")) == 0) && (read_char != EOF))	//search "    (effects (font " in line, ommit if there was EOF
+						{
+							strcpy(buffer_out, "    (effects (font (size 1 1) (thickness 0.15)))");
+							for(m = 0; buffer_out[m] != '\0'; ++m)
+								fputc(buffer_out[m], file_kicad_mod_new);	//write new line with new text size
+							fputc('\n', file_kicad_mod_new);
+						}
+						else if ((strncmp("  (model ", buffer_in + BUFFER_SIZE - l, strlen("  (model ")) == 0) && (read_char != EOF))	//search "  model " in line, ommit if there was EOF
 						{
 							for(m = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (model ") + m]) != '\n'; ++m)		//save path to 3d to path_3d_old (path should finish with '\n'
 								path_3d_old[m] = buffer_in[BUFFER_SIZE - l + strlen("  (model ") + m];
@@ -146,8 +198,13 @@ main (void)
 							for(m = 0; m < l; ++m)
 								fputc(buffer_in[BUFFER_SIZE - l + m], file_kicad_mod_new);	//if not found "  model ", write line to new file with no changes
 						
+					
+					
+					
+					
+					
 					} while (read_char != EOF);
-				
+					//------------------------------------------------------
 						
 				}
 				else
