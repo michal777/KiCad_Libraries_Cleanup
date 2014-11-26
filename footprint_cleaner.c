@@ -79,6 +79,7 @@ int main (void)
 
 
 
+
 //////////////////////////////////////////////////////////////////////
 //	get list of .pretty libraries to array
 //////////////////////////////////////////////////////////////////////
@@ -100,7 +101,13 @@ int main (void)
 		perror ("Couldn't open ./Pretty_bck directory");
 		exit (1);
 	}
-
+	
+//////////////// open log files to write ////////////////
+	mkdir ("log", 0777);		//create directories for new files
+	mkdir ("packages3d", 0777);
+	mkdir ("Pretty", 0777);
+	mkdir ("unused_3d", 0777);
+	
 //////////////// open log files to write ////////////////
 	if ((file_log_copied_wrl = fopen ("./log/copied_wrl.log", "wt")) == NULL)
 	{
