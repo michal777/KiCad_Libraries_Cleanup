@@ -11,8 +11,8 @@
 #define BUFFER_SIZE 2000
 
 
-FILE *G_file_log_all_wrl;		//list of all 3d .wrl files
-FILE *G_file_log_all_wings;		//list of all 3d .wings files
+FILE *G_file_log_all_wrl;			//list of all 3d .wrl files
+FILE *G_file_log_all_wings;			//list of all 3d .wings files
 FILE *G_file_log_all_not_3d;		//list of all not .wrl nor .wings files in ./packages3d_bck
 
 /////////////////////// funtions ///////////////////////////////
@@ -28,9 +28,9 @@ int search_wings (const char *name, const struct stat *statystyka, int type)		//
 		fprintf (G_file_log_all_wings, "%s\n", name);
     return 0;
 }
-int search_not_3d (const char *name, const struct stat *statystyka, int type)		//function used by ftw (from ftw.h) to find all .wings in directory tree
+int search_not_3d (const char *name, const struct stat *statystyka, int type)		//function used by ftw (from ftw.h) to find all not .wings nor .wrl in directory tree
 {
-	if ((strncmp (name + strlen (name) - strlen (".wrl"), ".wrl", strlen (".wrl")) != 0) && (strncmp (name + strlen (name) - strlen (".wings"), ".wings", strlen (".wings")) != 0))		//write path to file if it ends with ".wings"
+	if ((strncmp (name + strlen (name) - strlen (".wrl"), ".wrl", strlen (".wrl")) != 0) && (strncmp (name + strlen (name) - strlen (".wings"), ".wings", strlen (".wings")) != 0) && (type == FTW_F))		//write path to file if it doesn't end with ".wings" nor ".wrl" and is file
 		fprintf (G_file_log_all_not_3d, "%s\n", name);
     return 0;
 }
@@ -93,7 +93,7 @@ int main (void)
 				--i;
 		}
       	closedir (dir_pretty_old);
-      	strcpy (pretty_list[i].d_name, "_");	//add "_" at the end of the table to recognize when it finishes
+      	strcpy (pretty_list[i].d_name, "||\\//||");	//add "||\\//||" at the end of the table to recognize when it finishes
     }
 	else
 	{
@@ -121,13 +121,12 @@ int main (void)
 //////////////////////////////////////////////////////////////////////
 //	do following operations on all .pretty libraries
 //////////////////////////////////////////////////////////////////////
-	for (i = 0; strcmp (pretty_list[i].d_name, "_") != 0; ++i)
+	for (i = 0; strcmp (pretty_list[i].d_name, "||\\//||") != 0; ++i)
 	{
 		//---------------------------------------------------------------
 		//	get list of .kicad_mod footprints in current .pretty library
-		//---------------------------------------------------------------
-		strcpy (old_pretty_path, "./Pretty_bck/");
-		strcat (old_pretty_path, pretty_list[i].d_name);		
+		//---------------------------------------------------------------	
+		sprintf(old_pretty_path,"./Pretty_bck/%s", pretty_list[i].d_name);
 		dir_library_old = opendir (old_pretty_path);		//open old .pretty with footprints to modify
 		if (dir_library_old != NULL)
 		{
@@ -139,7 +138,7 @@ int main (void)
 					--j;
 			}
 		  	closedir (dir_library_old);
-		  	strcpy (footprint_list[j].d_name, "_");		//add "_" at the end of the table to recognize when it finishes
+		  	strcpy (footprint_list[j].d_name, "||\\//||");		//add "||\\//||" at the end of the table to recognize when it finishes
 		}
 		else
 		{
@@ -147,12 +146,9 @@ int main (void)
 			exit (1);
 		}
 
-		strcpy (new_pretty_path, "./Pretty/");
-		strcat (new_pretty_path, pretty_list[i].d_name);
+		sprintf(new_pretty_path,"./Pretty/%s", pretty_list[i].d_name);
 		mkdir (new_pretty_path, 0777);		//create new .pretty directory for modified footprints
-
-		strcpy (new_3d_dir_path, "./packages3d/");
-		strncat (new_3d_dir_path, pretty_list[i].d_name, strlen(pretty_list[i].d_name) - strlen(".pretty"));
+		sprintf(new_3d_dir_path,"./packages3d/%.*s", (unsigned int)(strlen(pretty_list[i].d_name) - strlen(".pretty")), pretty_list[i].d_name);
 		mkdir (new_3d_dir_path, 0777);		//create new directory for renamed 3d models
 						
 		
@@ -160,162 +156,112 @@ int main (void)
 		//---------------------------------------------------------------
 		//	do following operations on all footprints in current library
 		//---------------------------------------------------------------		
-		for (j = 0; strcmp(footprint_list[j].d_name, "_") != 0; ++j)
+		for (j = 0; strcmp(footprint_list[j].d_name, "||\\//||") != 0; ++j)
 		{
 			model_link_exists = 0;		//reset flag to check if there is link to model
-
-			strcpy(old_kicad_mod_path, "./Pretty_bck/");		//prepare path to read original .kicad_mod file
-			strcat(old_kicad_mod_path, pretty_list[i].d_name);		
-			strcat(old_kicad_mod_path, "/");
-			strcat(old_kicad_mod_path, footprint_list[j].d_name);				
-			strcpy(new_kicad_mod_path, "./Pretty/");		//prepare path to new .kicad_mod file
-			strcat(new_kicad_mod_path, pretty_list[i].d_name);		
-			strcat(new_kicad_mod_path, "/");
-			strcat(new_kicad_mod_path, footprint_list[j].d_name);
-							
+			sprintf(old_kicad_mod_path,"./Pretty_bck/%s/%s", pretty_list[i].d_name, footprint_list[j].d_name);		//prepare path to read original .kicad_mod file
+			sprintf(new_kicad_mod_path,"./Pretty/%s/%s", pretty_list[i].d_name, footprint_list[j].d_name);		//prepare path to new .kicad_mod file
+			
 			if ((file_kicad_mod_old = fopen(old_kicad_mod_path, "rt")) != NULL)
 			{
 				if ((file_kicad_mod_new = fopen(new_kicad_mod_path, "wt")) != NULL)
-				{
-				
+				{		
 					//HERE .kicad_mod FOOTPRINTS ARE MODIFIED
-					do
+					for (fgets (buffer_in, BUFFER_SIZE, file_kicad_mod_old); !feof (file_kicad_mod_old); fgets (buffer_in, BUFFER_SIZE, file_kicad_mod_old))		//read lines of .kicad_mod file until reaches EOF (must be \n before EOF)
 					{	
-						l = 0;		//reset counter of characters in line
-						do
+						
+						if ((strncmp("(module ", buffer_in, strlen("(module ")) == 0))		//if line starts with "(module  " it will be modified
 						{
-							if ((read_char = fgetc(file_kicad_mod_old)) != EOF)	//get character from file
+							if (buffer_in[strlen("(module ")] == '"')		//it's possible that this string contains whitespaces, then it in must be between double quotes
 							{
-								for (k = 0; k < BUFFER_SIZE - 1; ++k)
-									buffer_in[k] = buffer_in[k + 1];	//load line to shift register
-								buffer_in[BUFFER_SIZE - 1] = read_char;
-								++l;									//increment counter of characters read from line
+								for(n = 0; buffer_in[strlen("(module ") + n + 1] != '"'; ++n)		//must be ...+n+1 to ommit first "
+									{;}
+								n = n + 2;		//here, after adding 2, strlen("(module ") + n points at whitespace after module name in quotation
 							}
-						} while ((read_char != '\n') && (read_char != EOF));	//check if line is read
-						
-						if (!((read_char == EOF) && (buffer_in[BUFFER_SIZE - 1] == '\n')))
-						{
-						
-							if ((strncmp("(module ", buffer_in + BUFFER_SIZE - l, strlen("(module ")) == 0))	//search "  model " in line, ommit if there was EOF
-							{
-								if( buffer_in[BUFFER_SIZE - l + strlen("(module ")] == '"' )
-									for(n = 0; !(((buffer_in[BUFFER_SIZE - l + strlen("(module ") + n - 1]) == '"') && ((buffer_in[BUFFER_SIZE - l + strlen("(module ") + n]) == ' ')); ++n)
-										{}		//
-								else
-									for(n = 0; (buffer_in[BUFFER_SIZE - l + strlen("(module ") + n]) != ' '; ++n)
-										{}		//
-								for(m = 0; (buffer_in[BUFFER_SIZE - l + strlen("(module ") + n + m]) != '\n'; ++m)		//save rest of line, following "(module "
-									string_buffer_1[m] = buffer_in[BUFFER_SIZE - l + strlen("(module ") + n + m];
-								string_buffer_1[m] = '\0';
-						
-								strcpy(buffer_out, "(module ");
-								strncat(buffer_out, footprint_list[j].d_name, strlen(footprint_list[j].d_name) - strlen(".kicad_mod"));
-								strcat(buffer_out, string_buffer_1);							
-								for(m = 0; buffer_out[m] != '\0'; ++m)
-									fputc(buffer_out[m], file_kicad_mod_new);	//write new line
-								fputc('\n', file_kicad_mod_new);
-							}
-							else if ((strncmp("  (fp_text reference ", buffer_in + BUFFER_SIZE - l, strlen("  (fp_text reference ")) == 0))	//search "  (fp_text reference " in line, ommit if there was EOF
-							{
-								if( buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ")] == '"' )
-									for(n = 0; !(((buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ") + n - 1]) == '"') && ((buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ") + n]) == ' ')); ++n)
-										{}		//
-								else
-									for(n = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ") + n]) != ' '; ++n)
-										{}		//
-								for(m = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ") + n + m]) != '\n'; ++m)		//save rest of line, following "  (fp_text reference "
-									string_buffer_1[m] = buffer_in[BUFFER_SIZE - l + strlen("  (fp_text reference ") + n + m];
-								string_buffer_1[m] = '\0';
-						
-								strcpy(buffer_out, "  (fp_text reference ");
-								strncat(buffer_out, footprint_list[j].d_name, strlen(footprint_list[j].d_name) - strlen(".kicad_mod"));
-								strcat(buffer_out, string_buffer_1);							
-								for(m = 0; buffer_out[m] != '\0'; ++m)
-									fputc(buffer_out[m], file_kicad_mod_new);	//write new line
-								fputc('\n', file_kicad_mod_new);
-							}
-							else if ((strncmp("  (fp_text value ", buffer_in + BUFFER_SIZE - l, strlen("  (fp_text value ")) == 0))	//search "  (fp_text value " in line, ommit if there was EOF
-							{
-								if( buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ")] == '"' )
-									for(n = 0; !(((buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ") + n - 1]) == '"') && ((buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ") + n]) == ' ')); ++n)
-										{}	//
-								else
-									for(n = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ") + n]) != ' '; ++n)
-										{}		//
-								for(m = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ") + n + m]) != '\n'; ++m)		//save rest of line, following "  (fp_text value "
-									string_buffer_1[m] = buffer_in[BUFFER_SIZE - l + strlen("  (fp_text value ") + n + m];
-								string_buffer_1[m] = '\0';
-						
-								strcpy(buffer_out, "  (fp_text value VAL**");
-								strcat(buffer_out, string_buffer_1);							
-								for(m = 0; buffer_out[m] != '\0'; ++m)
-									fputc(buffer_out[m], file_kicad_mod_new);	//write new line
-								fputc('\n', file_kicad_mod_new);
-							}
-							else if ((strncmp("    (effects (font ", buffer_in + BUFFER_SIZE - l, strlen("    (effects (font ")) == 0))	//search "    (effects (font " in line, ommit if there was EOF
-							{
-								strcpy(buffer_out, "    (effects (font (size 1 1) (thickness 0.15)))");
-								for(m = 0; buffer_out[m] != '\0'; ++m)
-									fputc(buffer_out[m], file_kicad_mod_new);	//write new line with new text size
-								fputc('\n', file_kicad_mod_new);
-							}
-							else if ((strncmp("  (model ", buffer_in + BUFFER_SIZE - l, strlen("  (model ")) == 0))	//search "  model " in line, ommit if there was EOF
-							{
-								if( buffer_in[BUFFER_SIZE - l + strlen("  (model ")] == '"' )
-									for(m = 0; !(((buffer_in[BUFFER_SIZE - l + strlen("  (model ") + m]) == '"') && ((buffer_in[BUFFER_SIZE - l + strlen("  (model ") + m]) == '"')); ++m)		//save path to 3d to path_3d_old (path should finish with '\n'
-										path_3d_old[m] = buffer_in[BUFFER_SIZE - l + strlen("  (model ") + m + 1];
-								else
-									for(m = 0; (buffer_in[BUFFER_SIZE - l + strlen("  (model ") + m]) != '\n'; ++m)		//save path to 3d to path_3d_old (path should finish with '\n'
-										path_3d_old[m] = buffer_in[BUFFER_SIZE - l + strlen("  (model ") + m];
-								path_3d_old[m] = '\0';
-
-								strcpy(buffer_out, "  (model ");
-								strncat(buffer_out, pretty_list[i].d_name, strlen(pretty_list[i].d_name) - strlen(".pretty"));
-								strcat(buffer_out, "/");
-								strncat(buffer_out, footprint_list[j].d_name, strlen(footprint_list[j].d_name) - strlen(".kicad_mod"));	
-								strcat(buffer_out, ".wrl");
-								for(m = 0; buffer_out[m] != '\0'; ++m)
-									fputc(buffer_out[m], file_kicad_mod_new);	//write new line with path to new 3d model
-								fputc('\n', file_kicad_mod_new);
-								model_link_exists = 1;
-							}
-							else if (((strncmp("  (fp_line ", buffer_in + BUFFER_SIZE - l, strlen("  (fp_line ")) == 0) || (strncmp("  (fp_circle ", buffer_in + BUFFER_SIZE - l, strlen("  (fp_circle ")) == 0)))	//search "  (fp_line " in line, ommit if there was EOF
-							{
-								for(m = 0; ( strncmp( &buffer_in[BUFFER_SIZE - l + m], " (layer F.SilkS) (width ", strlen(" (layer F.SilkS) (width ") ) != 0 ) && m < l; ++m)		//save beginning of line
-									string_buffer_1[m] = buffer_in[BUFFER_SIZE - l + m];
-								string_buffer_1[m] = '\0';
-								if( m != l )
-								{
-									strcpy( buffer_out, string_buffer_1 );
-									strcat( buffer_out, " (layer F.SilkS) (width 0.15))" );
-									for(m = 0; buffer_out[m] != '\0'; ++m)
-										fputc(buffer_out[m], file_kicad_mod_new);	//write new line
-									fputc('\n', file_kicad_mod_new);
-								}
-								else
-									for(m = 0; m < l; ++m)
-										fputc(buffer_in[BUFFER_SIZE - l + m], file_kicad_mod_new);	//if not found " (layer F.SilkS) (width 0.15))", write line to new file with no changes
-							}					
-						
-							else
-								for(m = 0; m < l; ++m)
-									fputc(buffer_in[BUFFER_SIZE - l + m], file_kicad_mod_new);	//if not found eg. "  model ", write line to new file with no changes
-						
+							else		//if there are no doble quotes check how many characters has the string, count until whitespace
+								for(n = 0; (buffer_in[strlen("(module ") + n]) != ' '; ++n)
+									{;}		//if there are no quotation, when for loop ends, strlen("(module ") + n points at whitespace after module name		
+							for(m = 0; (buffer_in[strlen("(module ") + n + m - 1]) != '\0'; ++m)		//save rest of line, following "(module " and MODULENAME, copy also \0
+								string_buffer_1[m] = buffer_in[strlen("(module ") + n + m];
+							sprintf(buffer_out,"(module %.*s%s", (unsigned int)(strlen(footprint_list[j].d_name) - strlen(".kicad_mod")), footprint_list[j].d_name, string_buffer_1);
+							fputs (buffer_out, file_kicad_mod_new);		//print line modified above
 						}
-						if ((read_char == EOF) && !(buffer_in[BUFFER_SIZE - 1] == '\n'))
-							fputc('\n', file_kicad_mod_new);
+						else if ((strncmp("  (fp_text reference ", buffer_in, strlen("  (fp_text reference ")) == 0))		// modify "  (fp_text reference " similar as "module "
+						{
+							if (buffer_in[strlen("  (fp_text reference ")] == '"')
+							{
+								for(n = 0; buffer_in[strlen("  (fp_text reference ") + n + 1] != '"'; ++n)
+									{;}
+								n = n + 2;
+							}
+							else
+								for(n = 0; (buffer_in[strlen("  (fp_text reference ") + n]) != ' '; ++n)
+									{;}			
+							for(m = 0; (buffer_in[strlen("  (fp_text reference ") + n + m - 1]) != '\0'; ++m)
+								string_buffer_1[m] = buffer_in[strlen("  (fp_text reference ") + n + m];				
+							strcpy(buffer_out, "  (fp_text reference ");
+							sprintf(buffer_out,"  (fp_text reference %.*s%s", (unsigned int)(strlen(footprint_list[j].d_name) - strlen(".kicad_mod")), footprint_list[j].d_name, string_buffer_1);		
+							fputs (buffer_out, file_kicad_mod_new);
+						}
+						else if ((strncmp("  (fp_text value ", buffer_in, strlen("  (fp_text value ")) == 0))
+						{
+							if (buffer_in[strlen("  (fp_text value ")] == '"')
+							{
+								for(n = 0; buffer_in[strlen("  (fp_text value ") + n + 1] != '"'; ++n)
+									{;}
+								n = n + 2;
+							}
+							else
+								for(n = 0; (buffer_in[strlen("  (fp_text value ") + n]) != ' '; ++n)
+									{;}			
+							for(m = 0; (buffer_in[strlen("  (fp_text value ") + n + m - 1]) != '\0'; ++m)
+								string_buffer_1[m] = buffer_in[strlen("  (fp_text value ") + n + m];						
+							sprintf(buffer_out,"  (fp_text value VAL**%s", string_buffer_1);									
+							fputs (buffer_out, file_kicad_mod_new);
+						}
+						else if (strncmp("    (effects (font ", buffer_in, strlen("    (effects (font ")) == 0)
+						{
+							fputs ("    (effects (font (size 1 1) (thickness 0.15)))\n", file_kicad_mod_new);
+						}
+						else if ((strncmp("  (fp_line ", buffer_in, strlen("  (fp_line ")) == 0) || (strncmp("  (fp_circle ", buffer_in, strlen("  (fp_circle ")) == 0))
+						{
+							for (m = 0; (strncmp(buffer_in + m, " (layer F.SilkS) (width ", strlen(" (layer F.SilkS) (width ")) != 0) && m < strlen(buffer_in); ++m)
+								string_buffer_1[m] = buffer_in[m];
+							string_buffer_1[m] = '\0';
+							if (m < strlen(buffer_in))
+								fputs (strcat (string_buffer_1, " (layer F.SilkS) (width 0.15))\n"), file_kicad_mod_new);
+							else
+								fputs (buffer_in, file_kicad_mod_new);	//if not found " (layer F.SilkS) (width 0.15))", write line to new file with no changes
+						}		
+						else if (strncmp("  (model ", buffer_in, strlen("  (model ")) == 0)		//search line with link to 3d model
+						{
+							if (buffer_in[strlen("  (model ")] == '"')
+								for(m = 0; buffer_in[strlen("  (model ") + m + 1] != '"'; ++m)		//save path to 3d to path_3d_old (path should finish with '"')
+									path_3d_old[m] = buffer_in[strlen("  (model ") + m + 1];		//path begins after "  (model "", strlen("  (model ") points at "
+							else
+								for(m = 0; (buffer_in[strlen("  (model ") + m]) != '\n'; ++m)		//save path to 3d to path_3d_old (path should finish with '\n'
+									path_3d_old[m] = buffer_in[strlen("  (model ") + m];
+							path_3d_old[m] = '\0';		// \0 instead of \n or "
+							sprintf(buffer_out,"  (model %.*s/%.*s.wrl\n", (unsigned int)(strlen(pretty_list[i].d_name) - strlen(".pretty")), pretty_list[i].d_name, (unsigned int)(strlen(footprint_list[j].d_name) - strlen(".kicad_mod")), footprint_list[j].d_name);
+							fputs (buffer_out, file_kicad_mod_new);
+							model_link_exists = 1;
+						}
+						else
+							fputs (buffer_in, file_kicad_mod_new);		//copy other lines without changes
+
 					
-					} while (read_char != EOF);
+					
+					}
 					//------------------------------------------------------
-						
+				
+					fclose(file_kicad_mod_new);			
 				}
 				else
 					perror ("Couldn't open the new .kicad_mod file");
-				fclose(file_kicad_mod_new);	
+				fclose(file_kicad_mod_old);	
 			}
 			else
 				perror ("Couldn't open the old .kicad_mod file");
-			fclose(file_kicad_mod_old);
 			
 			// copy and rename 3d models
 			//-----------------------------
@@ -324,14 +270,8 @@ int main (void)
 				for (k = 0; path_3d_old[k] != '\0'; ++k)		//if path contains backslash, change to slash to find file on linux
 					if (path_3d_old[k] == '\\')
 						path_3d_old[k] = '/';
-				strcpy(old_3d_path, "./packages3d_bck/");
-				strcat(old_3d_path, path_3d_old);			
-				strcpy(new_3d_path, "./packages3d/");
-				strncat(new_3d_path, pretty_list[i].d_name, strlen(pretty_list[i].d_name) - strlen(".pretty"));
-				strcat(new_3d_path, "/");
-				strncat(new_3d_path, footprint_list[j].d_name, strlen(footprint_list[j].d_name) - strlen(".kicad_mod"));				
-				strcat(new_3d_path, ".wrl");
-
+				sprintf(old_3d_path,"./packages3d_bck/%s", path_3d_old);			
+				sprintf(new_3d_path,"./packages3d/%.*s/%.*s.wrl", (unsigned int)(strlen(pretty_list[i].d_name) - strlen(".pretty")), pretty_list[i].d_name, (unsigned int)(strlen(footprint_list[j].d_name) - strlen(".kicad_mod")), footprint_list[j].d_name);
 				if((file_3d_old = fopen(old_3d_path, "rt")) != NULL)
 				{
 					if((file_3d_new = fopen(new_3d_path, "wt")) != NULL)
@@ -348,16 +288,8 @@ int main (void)
 				}
 				else
 					fprintf(file_log_broken_link, "%s	%s	%s\n", pretty_list[i].d_name, footprint_list[j].d_name, old_3d_path);					
-			
-				strcpy(old_3d_path, "./packages3d_bck/");
-				strncat(old_3d_path, path_3d_old, strlen(path_3d_old) - strlen(".wrl"));
-				strcat(old_3d_path, ".wings");
-				strcpy(new_3d_path, "./packages3d/");
-				strncat(new_3d_path, pretty_list[i].d_name, strlen(pretty_list[i].d_name) - strlen(".pretty"));
-				strcat(new_3d_path, "/");
-				strncat(new_3d_path, footprint_list[j].d_name, strlen(footprint_list[j].d_name) - strlen(".kicad_mod"));				
-				strcat(new_3d_path, ".wings");
-				
+				sprintf(old_3d_path,"./packages3d_bck/%.*s.wings", (unsigned int)(strlen(path_3d_old) - strlen(".wrl")), path_3d_old);				
+				sprintf(new_3d_path,"./packages3d/%.*s/%.*s.wings", (unsigned int)(strlen(pretty_list[i].d_name) - strlen(".pretty")), pretty_list[i].d_name, (unsigned int)(strlen(footprint_list[j].d_name) - strlen(".kicad_mod")), footprint_list[j].d_name);
 				if((file_3d_old = fopen(old_3d_path, "rt")) != NULL)
 				{
 					if((file_3d_new = fopen(new_3d_path, "wt")) != NULL)
@@ -373,15 +305,14 @@ int main (void)
 				else
 					if (model_link_exists == 2)		//check if .wrl exists
 						fprintf(file_log_wrl_no_source, "%s\n", old_3d_path);		//write to list of .wrl without .wings
-				
 			}
 			// END copy and rename 3d models
 			//-----------------------------	
 			printf("*");
-			fflush(stdout);   	
+			fflush(stdout);
 		}
 		printf("|\n");
-		fflush(stdout);   
+		fflush(stdout);
 	}
 	fclose (file_log_copied_wrl);
 	fclose (file_log_broken_link);
@@ -461,15 +392,11 @@ int main (void)
 		if (flag == 0)
 			fprintf (file_log_not_exported_wings, "%s",  string_buffer_1);	//write to list of not exported .wings files
 	}
-  	fseek (G_file_log_all_wrl, 0, 0);
-	i = 0;
-
-	
 	fclose (file_log_not_exported_wings);
 	fclose (G_file_log_all_wings);
 	fclose (G_file_log_all_wrl);
 	fclose (file_log_copied_wrl);
-	fclose (file_log_unused_wrl);	
+	fclose (file_log_unused_wrl);
 	
 ////////////////////////////////////////////////////////////////////////////
 ////////// copy unused 3d models ///////////////////////////////////////////
@@ -481,19 +408,14 @@ int main (void)
 		
 	while (fgets (string_buffer_1, BUFFER_SIZE, file_log_unused_wrl) != NULL)		//get line with path of unused .wrl file
 	{	
+		strcpy (string_buffer_2, string_buffer_1);
 		strcpy (old_3d_path, string_buffer_1);		//path to directory where unused .wrl is
 		old_3d_path[strlen(string_buffer_1) - 1] = '\0';		//remove '\n'
-//		strcpy (new_3d_path, "./unused_3d");		//new directory path for all unused .wrl and .wings
-//		for (i = strlen (string_buffer_1); string_buffer_1[i] != '/'; --i)		//check how long is name from path (i = length of path, without last '/')
-//			{}
-//		strcat (new_3d_path, string_buffer_1 + i);		// "./unused_3d" + ending of old .wrl path ("/" + name of .wrl file)
-//		new_3d_path[strlen("./unused_3d") + strlen(string_buffer_1) - i - 1] = '\0';
-
-		strcpy (new_3d_path, "./unused_3d/_");
+		strcpy (new_3d_path, "./unused_3d/");
 		for (k = 0; string_buffer_1[k] != '\0'; ++k)
 			if (string_buffer_1[k] == '/')
-				string_buffer_1[k] = '_';
-		strcat (new_3d_path, string_buffer_1);
+				string_buffer_1[k] = '.';
+		strcat (new_3d_path, string_buffer_1 + strlen("./packages3d_bck/"));
 
 		if ((file_3d_old = fopen (old_3d_path, "rt")) != NULL)
 		{			
@@ -511,15 +433,9 @@ int main (void)
 			perror ("Couldn't open the old .wrl file from list of unused");
 			
 
-		strcpy (old_3d_path, string_buffer_1);		//path to directory where unused .wings is
-		old_3d_path[strlen (string_buffer_1) - strlen (".wrl") - 1] = '\0';		//remove ".wrl\n"
+		strcpy (old_3d_path, string_buffer_2);		//path to directory where unused .wings is
+		old_3d_path[strlen (string_buffer_2) - strlen (".wrl") - 1] = '\0';		//remove ".wrl\n"
 		strcat (old_3d_path, ".wings");
-//		strcpy (new_3d_path, "./unused_3d");		//new directory path for all unused .wrl and .wings
-//		for(i = strlen (string_buffer_1); string_buffer_1[i] != '/'; --i)
-//			{}
-//		strcat (new_3d_path, string_buffer_1 + i);
-//		new_3d_path[strlen("./unused_3d") - strlen (".wrl") + strlen (string_buffer_1) - i - 1] = '\0';		//cut ".wrl" with \0
-
 		strcat (new_3d_path, ".wings");		//append .wings
 		if ((file_3d_old = fopen (old_3d_path, "rt")) != NULL)
 		{
@@ -530,24 +446,20 @@ int main (void)
 				fclose (file_3d_new);	
 			}
 			else
-				printf ("Couldn't open the new .wings file, %s", string_buffer_1);
+				printf ("Couldn't open the new .wings file, %s", string_buffer_2);
 			fclose (file_3d_old);
 		}
 		else
-			fprintf (file_log_wrl_no_source, "%s", string_buffer_1);	//write to list of .wrl without .wings
+			fprintf (file_log_wrl_no_source, "unused %s", string_buffer_2);	//write to list of .wrl without .wings
 
 		printf(".");
 		fflush(stdout); 
 	}
 	printf("done\n");
-	
 	fclose (file_log_unused_wrl);
 	fclose (file_log_wrl_no_source);
-	
 	// END copy unused 3d models
 	//-----------------------------		
-
-
 
 	return 0;
 }
