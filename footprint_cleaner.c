@@ -422,6 +422,7 @@ int main (void)
 		for (k = 0; string_buffer_1[k] != '\0'; ++k)
 			if (string_buffer_1[k] == '/')
 				string_buffer_1[k] = '.';
+		string_buffer_1[k - 1] = '\0';		//remove '\n'
 		strcat (new_3d_path, string_buffer_1 + strlen("./packages3d_bck/"));
 
 		if ((file_3d_old = fopen (old_3d_path, "rt")) != NULL)
